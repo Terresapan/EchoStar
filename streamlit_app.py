@@ -17,7 +17,7 @@ def setup_sidebar():
     st.sidebar.markdown(
         "1. **Initiate Dialogue**: Begin a conversation with AI YanGG by typing in the chat box.  \n"
         "2. **Observe Personas**: AI YanGG's response style will change based on the conversation's tone (e.g., casual, philosophical, roleplay).  \n"
-        "3. **Provide Feedback**: You can shape AI YanGG's behavior. If you want it to act differently, provide direct feedback (e.g., *'I need you to be more assertive'*).  \n"
+        "3. **Provide Feedback**: You can shape AI YanGG's behavior. If you want it to act differently, provide direct feedback. (e.g., *'I need you to be more assertive'*).  \n"
     )
     
     st.sidebar.divider()
