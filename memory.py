@@ -1,41 +1,68 @@
 import logging
-from langmem import create_memory_store_manager, create_search_memory_tool
-from pydantic import BaseModel, Field
+import os
+
+import streamlit as st
 from langgraph.store.memory import InMemoryStore
+# Make sure schemas are imported correctly
+from schemas import EpisodicMemory, SemanticMemory, UserProfile
 
-class Memory(BaseModel):
-    """
-    A piece of information to be saved in memory.
-    This could be a fact, a user preference, or a summary of the interaction.
-    """
-    content: str = Field(description="The content of the memory to be stored.")
-    key: str = Field(description="The key of the memory to be stored.")
-    value: str = Field(description="The value of the memory to be stored.")
+from langmem import create_memory_store_manager, create_search_memory_tool
 
+# --- Setup ---
+openai_api_key = st.secrets["general"]["OPENAI_API_KEY"]
+os.environ["OPENAI_API_KEY"] = openai_api_key
+
+# A single, unified store for all memory types
 store = InMemoryStore(
     index={"embed": "openai:text-embedding-3-small"}
 )
-# This manager will run in the background to extract and save memories.
-# We are giving it instructions on what to look for in the conversation.
-memory_manager = create_memory_store_manager(
+
+# --- Memory Managers (For Writing to the Store) ---
+# 1. Manager for the UserProfile (a single, evolving document)
+profile_manager = create_memory_store_manager(
     "openai:gpt-4.1-mini",
-    namespace=("echo_star", "Lily", "collection"),
-    schemas=[Memory],
-    instructions="Extract key facts, user preferences, or important topics from the conversation to store for future reference. Focus on information that will help in future interactions.",
+    namespace=("echo_star", "Lily", "profile"),
+    schemas=[UserProfile],
+    instructions="Extract and update the user's profile based on the conversation. Focus on preferences, emotional state, and communication style.",
+    enable_inserts=False,  # Ensures a single, evolving profile
     store=store
 )
-logging.info("Memory Manager created successfully.")
 
-
-logging.basicConfig(level=logging.INFO)
-
-
-logging.info(f"Memory Manager Model Name: {getattr(memory_manager, 'model_name', getattr(memory_manager, 'model', 'Unknown'))}")
-
-
-search_memory_tool = create_search_memory_tool(
-    namespace=("echo_star", "Lily", "collection")
+# 2. Manager for SemanticMemory (a collection of individual facts)
+semantic_manager = create_memory_store_manager(
+    "openai:gpt-4o-mini",
+    namespace=("echo_star", "Lily", "facts"),
+    schemas=[SemanticMemory],
+    instructions="Extract any specific, atomic facts from the conversation, such as stated preferences, boundaries, goals, or traits.",
+    enable_inserts=True,  # Correctly allows new facts to be added to the collection
+    store=store,
 )
 
+# 3. Manager for EpisodicMemory (a collection of conversation turns)
+episodic_manager = create_memory_store_manager(
+    "openai:gpt-4o-mini",
+    namespace=("echo_star", "Lily", "collection"),
+    schemas=[EpisodicMemory],
+    instructions="Extract the user's message and the AI's response as a single conversational turn.",
+    enable_inserts=True,  # Correctly allows new episodes to be added
+    store=store,
+)
 
-logging.info(f"Search Memory Tool Args: {search_memory_tool.args}")
+# --- Memory Search Tools (For Reading from the Store) ---
+# 1. Search tool for Episodic Memories (past conversations)
+search_episodic_tool = create_search_memory_tool(
+    namespace=("echo_star", "Lily", "collection"),
+    store=store,
+)
+
+# 2. Search tool for Semantic Memories (facts and preferences)
+search_semantic_tool = create_search_memory_tool(
+    namespace=("echo_star", "Lily", "facts"),
+    store=store,
+)
+
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
+logging.info(
+    "Hybrid memory system with Profile, Semantic, and Episodic managers initialized."
+)

@@ -14,6 +14,14 @@ You have access to the following tools to help manage {name}'s communications:
 < Instructions >
 {instructions}
 </ Instructions >
+
+< User Profile >
+{user_profile}
+</ User Profile >
+
+< Relevant Memories >
+{memories}
+</ Relevant Memories >
 """
 
 triage_system_prompt = """

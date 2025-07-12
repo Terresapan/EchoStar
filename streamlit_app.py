@@ -1,5 +1,9 @@
 import streamlit as st
-from utils import save_feedback
+from uuid import uuid4
+from utils import save_feedback, check_password
+from graph import app  
+from langchain_core.messages import HumanMessage, AIMessage
+from memory import store, profile_manager, episodic_manager
 
 # Setup sidebar with instructions and feedback form
 def setup_sidebar():
@@ -7,9 +11,9 @@ def setup_sidebar():
     
     # Frame the app as a tool for its user, Lily. The project is named EchoStar.
     st.sidebar.header("EchoStar AI Simulator 🌘")
-    st.sidebar.markdown(
-        "This is a custom-built AI simulator for its user, **Lily**, designed to explore emotionally complex and psychologically nuanced dynamics with the **AI YanGG**."
-    )
+    # st.sidebar.markdown(
+    #     "This is a custom-built AI simulator for its user, **Lily**, designed to explore emotionally complex and psychologically nuanced dynamics with the **AI YanGG**."
+    # )
 
     st.sidebar.divider()
 
@@ -83,4 +87,70 @@ def setup_sidebar():
 
 def main():
     """Main application function."""
-   
+    # Set page configuration (must be the first Streamlit command)
+    st.set_page_config(
+        page_title="EchoStar AI Simulator 🌘",
+        page_icon="🌘",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+    setup_sidebar()
+
+    if not check_password():
+        st.stop()
+
+    st.markdown("<h1 class='main-title'>EchoStar AI Simulator 🌘</h1>", unsafe_allow_html=True)
+    st.markdown("""
+    This is a custom-built AI simulator for its user, Lily, designed to explore emotionally complex and psychologically nuanced dynamics with the AI YanGG.
+    """)
+
+    # Initialize session state for messages and thread_id
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "thread_id" not in st.session_state:
+        st.session_state.thread_id = str(uuid4())
+
+    # Display existing messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    # Chat input
+    prompt = st.chat_input("Say something to YanGG")
+    if prompt:
+        # Add user message to session state
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Display user message
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        # Define the config for this invocation
+        config = {"configurable": {"user_id": "Lily", "thread_id": st.session_state.thread_id}}
+
+        # Invoke the LangGraph workflow with just the new message
+        result = app.invoke({"message": prompt}, config=config) # type: ignore
+
+        # Display the agent's response
+        with st.chat_message("assistant"):
+            st.write(result["response"])
+        # Add agent message to session state
+        st.session_state.messages.append({"role": "assistant", "content": result["response"]})
+
+        
+
+        # Display memory
+        st.subheader("Agent Memory (Profile)")
+        profile_memories = store.search(('echo_star', 'Lily', 'profile'))
+        st.write(profile_memories)
+
+        st.subheader("Agent Memory (Semantic)")
+        semantic_memories = store.search(('echo_star', 'Lily', 'facts'))
+        st.write(semantic_memories)
+        
+        st.subheader("Agent Memory (Episodic)")
+        collection_memories = store.search(('echo_star', 'Lily', 'collection'))
+        st.write(collection_memories)
+
+if __name__ == "__main__":
+    main()
