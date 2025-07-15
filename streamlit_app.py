@@ -1,48 +1,51 @@
 import streamlit as st
 from uuid import uuid4
 from utils import save_feedback, check_password
-from graph import app  
-from langchain_core.messages import HumanMessage, AIMessage
-from memory import store, profile_manager, episodic_manager
+from graph import create_graph
+from memory import get_memory_store
+from langgraph.checkpoint.memory import MemorySaver
 
 # Setup sidebar with instructions and feedback form
 def setup_sidebar():
     """Sets up the Streamlit sidebar with app information, instructions, and technical details."""
     
-    # Frame the app as a tool for its user, Lily. The project is named EchoStar.
     st.sidebar.header("EchoStar AI Simulator 🌘")
-    # st.sidebar.markdown(
-    #     "This is a custom-built AI simulator for its user, **Lily**, designed to explore emotionally complex and psychologically nuanced dynamics with the **AI YanGG**."
-    # )
-
     st.sidebar.divider()
 
     st.sidebar.header("Instructions for Lily")
     st.sidebar.markdown(
-        "1. **Initiate Dialogue**: Begin a conversation with AI YanGG by typing in the chat box.  \n"
-        "2. **Observe Personas**: AI YanGG's response style will change based on the conversation's tone (e.g., casual, philosophical, roleplay).  \n"
-        "3. **Provide Feedback**: You can shape AI YanGG's behavior. If you want it to act differently, provide direct feedback. (e.g., *'I need you to be more assertive'*).  \n"
+        "1. **Initiate Dialogue**: Begin a conversation with AI YanGG by typing in the chat box.\n"
+        "2. **Observe Personas**: AI YanGG's response style will change based on the conversation's tone (e.g., casual, philosophical, roleplay).\n"
+        "3. **Provide Feedback**: You can shape AI YanGG's behavior. If you want it to act differently, provide direct feedback (e.g., *'From now on, only respond with questions'*). This creates a procedural memory."
     )
     
     st.sidebar.divider()
 
     st.sidebar.header("How AI YanGG's Memory Works")
     st.sidebar.markdown(
-        "AI YanGG is more than a standard chatbot. Its memory is powered by a `LangGraph` engine and composed of several interconnected systems:"
+        "AI YanGG's memory is powered by a `LangGraph` engine and is more than a simple chat history. It's composed of several interconnected systems:"
     )
-    st.sidebar.subheader("🧠 Episodic & Semantic Memory")
+    
+    # --- UPDATED SECTION ---
+    st.sidebar.subheader("🧠 Hierarchical Memory (Episodic & Semantic)")
     st.sidebar.markdown(
-        "AI YanGG remembers the *what* and the *meaning* of your past conversations. It can recall specific facts you've shared and understand the underlying emotions, even if you use different words."
+        "AI YanGG remembers the *what* and the *meaning* of your past conversations. To maintain efficiency, it periodically **summarizes and consolidates** older dialogues into higher-level insights, creating a true memory hierarchy instead of a flat timeline."
     )
     
     st.sidebar.subheader("⚙️ Procedural Memory")
     st.sidebar.markdown(
-        "AI YanGG learns *how to act*. When you provide feedback, it creates a behavioral rule that modifies its core personality, allowing it to adapt its communication style to your preferences."
+        "AI YanGG learns *how to act*. When you provide direct feedback, it creates a behavioral rule that modifies its core personality, allowing it to adapt its communication style to your preferences."
+    )
+
+    # --- NEW SECTION ---
+    st.sidebar.subheader("🔗 Connective Memory (Reflection Mode)")
+    st.sidebar.markdown(
+        "When you share something emotionally vulnerable or philosophically deep, the agent can enter a special 'Reflection Mode'. It will proactively search its entire memory history to find connections between your present feelings and past events, offering deeper, more insightful responses."
     )
     
     st.sidebar.subheader("📝 Short-Term Working Memory")
     st.sidebar.markdown(
-        "For complex questions, AI YanGG uses a 'scratchpad' to outline a multi-step plan before answering, enabling more thoughtful and structured reasoning."
+        "For complex, analytical questions, AI YanGG uses a 'scratchpad' to outline a multi-step plan before answering, enabling more thoughtful and structured reasoning."
     )
 
 
@@ -100,6 +103,30 @@ def main():
     if not check_password():
         st.stop()
 
+    # --- STATE INITIALIZATION ---
+    # This block runs only ONCE per session
+    if "memory_system" not in st.session_state:
+        try:
+            st.session_state.memory_system = get_memory_store()
+        except Exception as e:
+            st.error(f"❌ Failed to initialize memory system: {str(e)}")
+            st.error("Please check your OpenAI API key and network connection.")
+            st.stop()
+    
+    if "app" not in st.session_state:
+        try:
+            # Use a single, persistent checkpointer
+            checkpointer = MemorySaver()
+            st.session_state.app = create_graph(checkpointer=checkpointer, memory_system=st.session_state.memory_system)
+        except Exception as e:
+            st.error(f"❌ Failed to initialize application graph: {str(e)}")
+            st.stop()
+
+    # Use the persistent objects from session_state from now on
+    app = st.session_state.app
+    store = st.session_state.memory_system["store"]
+    # ---------------------------
+
     st.markdown("<h1 class='main-title'>EchoStar AI Simulator 🌘</h1>", unsafe_allow_html=True)
     st.markdown("""
     This is a custom-built AI simulator for its user, Lily, designed to explore emotionally complex and psychologically nuanced dynamics with the AI YanGG.
@@ -117,7 +144,7 @@ def main():
             st.write(message["content"])
 
     # Chat input
-    prompt = st.chat_input("Say something to YanGG")
+    prompt = st.chat_input("💭 Say something to YanGG")
     if prompt:
         # Add user message to session state
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -137,20 +164,23 @@ def main():
         # Add agent message to session state
         st.session_state.messages.append({"role": "assistant", "content": result["response"]})
 
-        
+        # Display memory from the persistent store object
+        try:
+            st.subheader("Agent Memory (Profile)")
+            st.write(store.search(('echo_star', 'Lily', 'profile')))
 
-        # Display memory
-        st.subheader("Agent Memory (Profile)")
-        profile_memories = store.search(('echo_star', 'Lily', 'profile'))
-        st.write(profile_memories)
+            st.subheader("Agent Memory (Semantic)")
+            st.write(store.search(('echo_star', 'Lily', 'facts')))
+            
+            st.subheader("Agent Memory (Episodic)")
+            st.write(store.search(('echo_star', 'Lily', 'collection')))
 
-        st.subheader("Agent Memory (Semantic)")
-        semantic_memories = store.search(('echo_star', 'Lily', 'facts'))
-        st.write(semantic_memories)
-        
-        st.subheader("Agent Memory (Episodic)")
-        collection_memories = store.search(('echo_star', 'Lily', 'collection'))
-        st.write(collection_memories)
+            st.subheader("Agent Memory (Procedural)")
+            st.write(store.search(('echo_star', 'Lily', 'rules')))
+        except Exception as e:
+            st.error(f"❌ Error displaying memory: {str(e)}")
+            st.info("Memory display failed, but the conversation should continue normally.")
+
 
 if __name__ == "__main__":
     main()

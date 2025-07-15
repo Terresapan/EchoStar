@@ -45,10 +45,21 @@ The goal is to create a multi-agent system where a central router classifies inc
 
 ### Memory System
 
-- The memory system is defined in `memory.py` and uses `langmem`.
-- It has three types of memory: `EpisodicMemory`, `SemanticMemory`, and `UserProfile`.
-- The `memory_retrieval_node` in `nodes.py` fetches relevant memories at the beginning of each turn.
-- The `save_memories_node` in `nodes.py` saves memories at the end of each turn.
+The agent features a sophisticated, multi-layered memory system designed for long-term, context-aware conversations. It is orchestrated by `LangGraph` and powered by `langmem`.
+
+- **Memory Storage:** The system currently uses an `InMemoryStore` from `langgraph.store.memory`, meaning memories are not persisted between application runs. The memory is initialized in `memory.py`.
+
+- **Four-Layer Memory Architecture:** The memory is structured into four distinct types, defined in `schemas.py`:
+  - **`UserProfile`**: A single, evolving document capturing the user's core traits, communication style, and emotional baseline.
+  - **`SemanticMemory`**: Stores atomic, factual information such as user preferences, stated beliefs, or key facts from conversations.
+  - **`EpisodicMemory`**: A chronological log of conversational turns, capturing the history of interactions.
+  - **`ProceduralMemory`**: A dynamic set of learned behavioral rules. These are trigger-action pairs derived from user feedback, allowing the agent to adapt its responses and actions over time.
+
+- **Memory Flow:**
+  1.  **Intelligent Retrieval (`memory_retrieval_node`):** At the start of each turn, this node classifies the user's intent to perform a targeted search. It retrieves the most relevant `EpisodicMemory` and `SemanticMemory`, and always fetches the `UserProfile` for context.
+  2.  **Contextual Response:** The retrieved memories are passed through the `AgentState` to the router and then to the selected sub-agent, ensuring the response is personalized and contextually grounded. The sub-agents also consult `ProceduralMemory` to check for behavioral overrides.
+  3.  **Memory Saving (`save_memories_node`):** At the end of each turn, the conversation is processed by `ReflectionExecutor` managers (`profile_manager`, `semantic_manager`, `episodic_manager`, `procedural_manager`) which extract and save new information to the appropriate memory layers.
+  4.  **Hierarchical Condensation (`condense_memory_node`):** Periodically (every 10 turns), this node retrieves the most recent `EpisodicMemory`, uses an LLM to create a high-level summary, and saves this summary as a new `SemanticMemory`. This creates a hierarchical system, preventing data overload and consolidating raw interaction data into long-term insights.
 
 ### Router Node
 

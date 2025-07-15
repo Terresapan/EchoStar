@@ -3,3 +3,4 @@ langmem
 git+https://github.com/streamlit/gsheets-connection
 gspread
 oauth2client
+pygraphviz
