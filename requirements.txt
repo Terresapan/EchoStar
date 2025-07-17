@@ -23,8 +23,5 @@ pytest-anyio
 # Type Checking
 mypy
 
-# Visualization and Diagrams
-pygraphviz
-
 # Additional Utilities
 numpy  # Used in advanced evaluation
