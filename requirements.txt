@@ -1,6 +1,31 @@
+# Core Streamlit and Web Framework
 streamlit
+
+# LangChain and AI Components
+langchain
+langchain-core
+langchain-openai
+langchain-text-splitters
+langgraph
+langsmith
+
+# Memory and Storage
 langmem
-git+https://github.com/streamlit/gsheets-connection
-gspread
-oauth2client
+
+# Data Validation and Configuration
+pydantic
+pyyaml
+
+# Testing Framework
+pytest
+pytest-anyio
+
+# Type Checking
+mypy
+
+# Visualization and Diagrams
 pygraphviz
+
+# Additional Utilities
+numpy  # Used in advanced evaluation
+hashlib  # Built-in, but good to document

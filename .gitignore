@@ -1,4 +1,30 @@
+# EchoStar specific files
 .streamlit/secrets.toml
+logs/*.log
+logs/echostar.log
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+
+# Generated diagrams and images
+scripts/*.png
+scripts/*.svg
+scripts/logs/
+
+# Kiro IDE
+.kiro/
+
+# AI/ML specific
+*.pkl
+*.pickle
+*.joblib
+*.model
+*.weights
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

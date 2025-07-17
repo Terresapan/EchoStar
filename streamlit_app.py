@@ -1,9 +1,22 @@
 import streamlit as st
 from uuid import uuid4
-from utils import save_feedback, check_password
-from graph import create_graph
-from memory import get_memory_store
+from src.utils.utils import save_feedback, check_password
+from src.agents.graph import create_graph
+from src.agents.memory import create_memory_system
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.store.memory import InMemoryStore
+
+# Import configuration manager
+from config.manager import get_config_manager
+
+# Import logging and validation utilities
+from src.utils.logging_utils import get_logger, validate_user_input, setup_application_logging
+
+# Initialize logger for this module
+logger = get_logger(__name__)
+
+# Setup application logging
+setup_application_logging()
 
 # Setup sidebar with instructions and feedback form
 def setup_sidebar():
@@ -60,33 +73,9 @@ def setup_sidebar():
         "[Terresa Pan's Agent Garden Link](https://ai-agents-garden.lovable.app/)"
     )
 
-    # Feedback section
-    if 'feedback' not in st.session_state:
-        st.session_state.feedback = ""
-
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("💭 Feedback")
-    feedback = st.sidebar.text_area(
-        "Share your thoughts",
-        value=st.session_state.feedback,
-        placeholder="Your feedback helps us improve..."
-    )
-
-    if st.sidebar.button("📤 Submit Feedback"):
-        if feedback:
-            try:
-                save_feedback(feedback)
-                st.session_state.feedback = ""
-                st.sidebar.success("✨ Thank you for your feedback!")
-            except Exception as e:
-                st.sidebar.error(f"❌ Error saving feedback: {str(e)}")
-        else:
-            st.sidebar.warning("⚠️ Please enter feedback before submitting")
-
-    try:
-        st.sidebar.image("assets/bot01.jpg", use_container_width=True)
-    except:
-        pass
+    
+    st.sidebar.image("assets/bot01.jpg", use_container_width=True)
+    
 
 def main():
     """Main application function."""
@@ -103,11 +92,56 @@ def main():
     if not check_password():
         st.stop()
 
+    # --- CONFIGURATION VALIDATION ---
+    # Validate configuration at startup
+    if "config_validated" not in st.session_state:
+        try:
+            config_manager = get_config_manager()
+            if not config_manager.validate_config():
+                st.error("❌ Configuration validation failed!")
+                st.error("Please check your configuration files and environment variables.")
+                st.stop()
+            
+            # Display configuration info in development
+            config = config_manager.config
+            if config and config.logging.level == "DEBUG":
+                st.info("✅ Configuration loaded successfully")
+                with st.expander("Configuration Details"):
+                    st.json({
+                        "memory": {
+                            "turns_to_summarize": config.memory.turns_to_summarize,
+                            "search_limit": config.memory.search_limit,
+                            "enable_condensation": config.memory.enable_condensation
+                        },
+                        "routing": {
+                            "roleplay_threshold": config.routing.roleplay_threshold,
+                            "enable_fallback": config.routing.enable_fallback
+                        },
+                        "llm": {
+                            "model_name": config.llm.model_name,
+                            "temperature": config.llm.temperature,
+                            "timeout": config.llm.timeout
+                        },
+                        "logging": {
+                            "level": config.logging.level,
+                            "format": config.logging.format
+                        }
+                    })
+            
+            st.session_state.config_validated = True
+            
+        except Exception as e:
+            st.error(f"❌ Configuration initialization failed: {str(e)}")
+            st.error("Please check your configuration files and try again.")
+            st.stop()
+
     # --- STATE INITIALIZATION ---
     # This block runs only ONCE per session
     if "memory_system" not in st.session_state:
         try:
-            st.session_state.memory_system = get_memory_store()
+            # Initialize the memory store and system
+            store = InMemoryStore()
+            st.session_state.memory_system = create_memory_system(store)
         except Exception as e:
             st.error(f"❌ Failed to initialize memory system: {str(e)}")
             st.error("Please check your OpenAI API key and network connection.")
@@ -146,6 +180,37 @@ def main():
     # Chat input
     prompt = st.chat_input("💭 Say something to YanGG")
     if prompt:
+        # Validate user input before processing
+        logger.info("User message received", 
+                   message_length=len(prompt),
+                   thread_id=st.session_state.thread_id)
+        
+        validation_result = validate_user_input(prompt)
+        
+        if not validation_result.is_valid:
+            # Display validation errors to user
+            logger.warning("User input validation failed", 
+                          errors=validation_result.error_messages,
+                          warnings=validation_result.warnings)
+            
+            st.error("❌ Message validation failed:")
+            for error in validation_result.errors:
+                st.error(f"• {error.message}")
+            
+            if validation_result.warnings:
+                st.warning("⚠️ Warnings:")
+                for warning in validation_result.warnings:
+                    st.warning(f"• {warning}")
+            
+            return  # Don't process invalid input
+        
+        # Log any warnings but continue processing
+        if validation_result.has_warnings:
+            logger.info("User input has warnings but is valid", 
+                       warnings=validation_result.warnings)
+            for warning in validation_result.warnings:
+                st.info(f"ℹ️ {warning}")
+        
         # Add user message to session state
         st.session_state.messages.append({"role": "user", "content": prompt})
         # Display user message
@@ -155,14 +220,30 @@ def main():
         # Define the config for this invocation
         config = {"configurable": {"user_id": "Lily", "thread_id": st.session_state.thread_id}}
 
-        # Invoke the LangGraph workflow with just the new message
-        result = app.invoke({"message": prompt}, config=config) # type: ignore
+        try:
+            # Invoke the LangGraph workflow with just the new message
+            logger.info("Starting LangGraph workflow execution", 
+                       thread_id=st.session_state.thread_id)
+            
+            with logger.performance_timer("langgraph_execution", thread_id=st.session_state.thread_id):
+                result = app.invoke({"message": prompt}, config=config) # type: ignore
+            
+            logger.info("LangGraph workflow completed successfully", 
+                       response_length=len(result.get("response", "")),
+                       thread_id=st.session_state.thread_id)
 
-        # Display the agent's response
-        with st.chat_message("assistant"):
-            st.write(result["response"])
-        # Add agent message to session state
-        st.session_state.messages.append({"role": "assistant", "content": result["response"]})
+            # Display the agent's response
+            with st.chat_message("assistant"):
+                st.write(result["response"])
+            # Add agent message to session state
+            st.session_state.messages.append({"role": "assistant", "content": result["response"]})
+            
+        except Exception as e:
+            logger.error("LangGraph workflow execution failed", 
+                        error=e,
+                        thread_id=st.session_state.thread_id)
+            st.error(f"❌ Error processing your message: {str(e)}")
+            st.info("Please try again or rephrase your message.")
 
         # Display memory from the persistent store object
         try:

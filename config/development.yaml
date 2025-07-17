@@ -1,0 +1,44 @@
+# EchoStar AI Simulator - Development Configuration
+# Overrides for development environment
+
+# Memory settings optimized for development/testing
+memory:
+  # Shorter condensation cycle for testing memory features
+  turns_to_summarize: 2
+
+  # Smaller search limits for faster development
+  search_limit: 5
+  procedural_search_limit: 3
+
+# Routing settings for development
+routing:
+  # Lower roleplay threshold for testing intervention features
+  roleplay_threshold: 1
+
+  # Lower confidence threshold to test edge cases
+  classification_confidence_threshold: 0.6
+
+# LLM settings for development
+llm:
+  # Use faster/cheaper model for development
+  model_name: "openai:gpt-4.1-mini"
+
+  # Higher temperature for more varied responses during testing
+  temperature: 0.8
+
+  # Shorter timeout for faster feedback during development
+  timeout: 15
+
+# Logging settings for development
+logging:
+  # More verbose logging for debugging
+  level: "DEBUG"
+
+  # Human-readable format for development
+  format: "text"
+
+  # Enable performance logging for optimization
+  enable_performance_logging: true
+
+  # Development log file
+  log_file_path: "logs/echostar-dev.log"

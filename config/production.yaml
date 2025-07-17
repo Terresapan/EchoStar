@@ -1,0 +1,50 @@
+# EchoStar AI Simulator - Production Configuration
+# Overrides for production environment
+
+# Memory settings optimized for production
+memory:
+  # Standard condensation cycle for production
+  turns_to_summarize: 10
+
+  # Balanced search limits for performance
+  search_limit: 10
+  procedural_search_limit: 5
+
+  # Ensure condensation is enabled in production
+  enable_condensation: true
+
+# Routing settings for production
+routing:
+  # Standard roleplay threshold for user well-being
+  roleplay_threshold: 2
+
+  # Higher confidence threshold for more reliable routing
+  classification_confidence_threshold: 0.85
+
+# LLM settings for production
+llm:
+  # Use the most capable model for production
+  model_name: "openai:gpt-4.1-mini"
+
+  # Balanced temperature for consistent quality
+  temperature: 0.7
+
+  # Longer timeout for reliability
+  timeout: 45
+
+# Logging settings for production
+logging:
+  # Standard logging level for production
+  level: "INFO"
+
+  # Structured JSON logs for production monitoring
+  format: "json"
+
+  # Enable file logging for audit trails
+  enable_file_logging: true
+
+  # Production log file with rotation
+  log_file_path: "logs/echostar-prod.log"
+
+  # Disable performance logging in production unless needed
+  enable_performance_logging: false

@@ -1,0 +1,90 @@
+# EchoStar AI Simulator - Default Configuration
+# This file contains all default configuration values with documentation
+
+# Memory Management Configuration
+memory:
+  # Number of conversation turns before triggering memory condensation
+  # Higher values = more detailed memory, but slower performance
+  # Range: 1-100, Default: 10
+  turns_to_summarize: 10
+
+  # Maximum number of memories to retrieve in searches
+  # Higher values = more context, but slower retrieval
+  # Range: 1-50, Default: 10
+  search_limit: 10
+
+  # Whether to enable automatic memory condensation
+  # Disable for debugging or if you want to preserve all episodic memories
+  # Default: true
+  enable_condensation: true
+
+  # Maximum number of procedural memories to retrieve
+  # These are behavioral rules learned from user feedback
+  # Range: 1-20, Default: 5
+  procedural_search_limit: 5
+
+# Message Routing and Classification Configuration
+routing:
+  # Maximum number of consecutive roleplay sessions before intervention
+  # Helps maintain user well-being by encouraging variety
+  # Range: 1-10, Default: 2
+  roleplay_threshold: 2
+
+  # Whether to enable fallback responses for unclassified messages
+  # Disable only for debugging routing issues
+  # Default: true
+  enable_fallback: true
+
+  # Minimum confidence threshold for message classification
+  # Higher values = more conservative routing, may increase fallbacks
+  # Range: 0.0-1.0, Default: 0.8
+  classification_confidence_threshold: 0.8
+
+# Language Model Configuration
+llm:
+  # Name of the LLM model to use
+  # Format: provider:model-name
+  # Examples: "openai:gpt-4.1-mini", "openai:gpt-4", "anthropic:claude-3"
+  model_name: "openai:gpt-4.1-mini"
+
+  # Temperature setting for response generation
+  # Lower = more focused/deterministic, Higher = more creative/random
+  # Range: 0.0-2.0, Default: 0.7
+  temperature: 0.7
+
+  # Maximum number of tokens in responses
+  # null = no limit (uses model default)
+  # Set to limit response length and control costs
+  max_tokens: null
+
+  # Timeout for LLM API calls in seconds
+  # Increase if you experience timeout errors
+  # Range: 1-300, Default: 30
+  timeout: 30
+
+# Logging Configuration
+logging:
+  # Logging level - controls verbosity
+  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  # DEBUG = most verbose, CRITICAL = least verbose
+  level: "INFO"
+
+  # Log format
+  # "json" = structured JSON logs (recommended for production)
+  # "text" = human-readable text logs (good for development)
+  format: "json"
+
+  # Whether to enable file-based logging
+  # Logs will be written to the file specified in log_file_path
+  # Default: true
+  enable_file_logging: true
+
+  # Path to log file (relative to application root)
+  # Directory will be created if it doesn't exist
+  log_file_path: "logs/echostar.log"
+
+  # Whether to enable performance timing logs
+  # Useful for debugging performance issues
+  # May increase log volume significantly
+  # Default: false
+  enable_performance_logging: false
