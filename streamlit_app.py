@@ -64,13 +64,13 @@ def setup_sidebar():
 
     st.sidebar.write("### 🎧 Listen to our Podcast for more insights")
     st.sidebar.markdown(
-        "[AI YanGG Simulator Podcast Link](https://open.spotify.com/episode/4ZMxA2xlKMbIOxcdb3SJEv)"
+        "[AI YanGG Simulator Podcast Link](https://open.spotify.com/episode/27Cepxa1bI3tTN9G3fhJbk)"
     )
 
 
     st.sidebar.write("### 🌎 Visit my AI Agent Projects Website")
     st.sidebar.markdown(
-        "[Terresa Pan's Agent Garden Link](https://ai-agents-garden.lovable.app/)"
+        "[Terresa Pan's Agent Garden Link](https://agentgarden.lovable.app/)"
     )
 
     
