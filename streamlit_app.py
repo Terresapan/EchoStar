@@ -87,10 +87,10 @@ def main():
         initial_sidebar_state="expanded"
     )
 
-    setup_sidebar()
-
     if not check_password():
         st.stop()
+
+    setup_sidebar()
 
     # --- CONFIGURATION VALIDATION ---
     # Validate configuration at startup
