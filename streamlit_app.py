@@ -139,8 +139,12 @@ def main():
     # This block runs only ONCE per session
     if "memory_system" not in st.session_state:
         try:
-            # Initialize the memory store and system
-            store = InMemoryStore()
+            # Set OpenAI API key before creating store with embedding index
+            import os
+            os.environ["OPENAI_API_KEY"] = st.secrets["general"]["OPENAI_API_KEY"]
+            
+            # Initialize the memory store and system with embedding index
+            store = InMemoryStore(index={"embed": "openai:text-embedding-3-small"})
             st.session_state.memory_system = create_memory_system(store)
         except Exception as e:
             st.error(f"❌ Failed to initialize memory system: {str(e)}")

@@ -6,7 +6,7 @@ from .schemas import EpisodicMemory, SemanticMemory, UserProfile, ProceduralMemo
 from langmem import create_memory_store_manager, create_search_memory_tool, ReflectionExecutor
 
 
-def get_memory_store():
+def get_memory_store(store: InMemoryStore = None):
     """Initialize and return the in-memory store for EchoStar.
     This store will hold all types of memories: profile, semantic, episodic, and procedural."""
     print("=== STARTING MEMORY STORE INITIALIZATION ===")
@@ -16,22 +16,29 @@ def get_memory_store():
     os.environ["OPENAI_API_KEY"] = openai_api_key
     print(f"DEBUG: OpenAI API key set: {openai_api_key[:10]}...")
     
-    # A single, unified store for all memory types
+    # Use provided store or create a new one
+    if store is None:
+        try:
+            store = InMemoryStore(index={"embed": "openai:text-embedding-3-small"})
+            print(f"DEBUG: Created new InMemoryStore: {store}")
+        except Exception as e:
+            print(f"ERROR creating InMemoryStore: {e}")
+            print(f"Exception type: {type(e)}")
+            print(f"This might be due to missing OpenAI API key or network issues")
+            raise e
+    else:
+        print(f"DEBUG: Using provided InMemoryStore: {store}")
+    
+    print(f"DEBUG: store type: {type(store)}")
+    print(f"DEBUG: store has search method: {hasattr(store, 'search')}")
+    
+    # Test the store immediately
     try:
-        store = InMemoryStore(index={"embed": "openai:text-embedding-3-small"})
-        print(f"DEBUG: Created InMemoryStore: {store}")
-        print(f"DEBUG: store type: {type(store)}")
-        print(f"DEBUG: store has search method: {hasattr(store, 'search')}")
-        
-        # Test the store immediately
         test_result = store.search(("test", "namespace"))
         print(f"DEBUG: Store search test successful: {test_result}")
     except Exception as e:
-        print(f"ERROR creating InMemoryStore: {e}")
-        print(f"Exception type: {type(e)}")
-        print(f"This might be due to missing OpenAI API key or network issues")
-        # Don't set store to None, raise the exception to see what's wrong
-        raise e
+        print(f"WARNING: Store search test failed: {e}")
+        # Continue anyway as this might be expected for empty stores
     
     # --- Memory Managers (For Writing to the Store) ---
     # 1. Manager for the UserProfile (a single, evolving document)
@@ -50,7 +57,8 @@ def get_memory_store():
             ),
             enable_inserts=False,  # Ensures a single, evolving profile
             store=store
-        )
+        ),
+        store=store  # Pass store to ReflectionExecutor as well
     )
     
     # 2. Manager for SemanticMemory (a collection of individual facts)
@@ -62,7 +70,8 @@ def get_memory_store():
             instructions="Extract any specific, atomic facts from the conversation, such as stated preferences, boundaries, goals, or traits.",
             enable_inserts=True,  # Correctly allows new facts to be added to the collection
             store=store,
-        )
+        ),
+        store=store  # Pass store to ReflectionExecutor as well
     )
     
     # 3. Manager for EpisodicMemory (a collection of conversation turns)
@@ -74,7 +83,8 @@ def get_memory_store():
             instructions="Extract the user's message and the AI's response as a single conversational turn.",
             enable_inserts=True,  # Correctly allows new episodes to be added
             store=store,
-        )
+        ),
+        store=store  # Pass store to ReflectionExecutor as well
     )
     
     # 4. Manager for ProceduralMemory (a collection of learned behaviors)
@@ -86,7 +96,8 @@ def get_memory_store():
             instructions="""Extract any direct user feedback that defines a behavioral rule. Identify the condition (trigger) and the desired agent response (action). For example, if the user says, 'If I seem sad, please use the mood lift tool,' extract that as a trigger-action pair.""",
             enable_inserts=True,  # Allows new procedural rules to be added
             store=store,
-        )
+        ),
+        store=store  # Pass store to ReflectionExecutor as well
     )
     
     # --- Memory Search Tools (For Reading from the Store) ---
@@ -138,4 +149,4 @@ def get_memory_store():
 
 def create_memory_system(store: InMemoryStore) -> dict:
     """Create and initialize the complete memory system using langmem."""
-    return get_memory_store()
+    return get_memory_store(store)

@@ -730,7 +730,9 @@ def save_memories_node(state: AgentState, profile_manager: Any, semantic_manager
     
     logger.info("Starting memory saving process", 
                 message_length=len(state["message"]),
-                response_length=len(state.get("response", "") or ""))
+                response_length=len(state.get("response", "") or ""),
+                store_available=store is not None,
+                store_type=type(store).__name__ if store else "None")
     
     # The message list for memory extraction
     messages_to_save = [
@@ -757,7 +759,10 @@ def save_memories_node(state: AgentState, profile_manager: Any, semantic_manager
                 
                 # Let the profile manager extract the profile information
                 # This will update the store through langmem, but we'll clean up afterwards
+                logger.debug("Submitting profile data to profile manager", 
+                           has_existing=len(profile_data.get("existing", [])) > 0)
                 profile_manager.submit(profile_data)
+                logger.info("Profile manager submission completed successfully")
                 
                 # Now ensure only one profile exists using our replace-based logic
                 # Get the most recent profile data that was just created/updated
@@ -820,9 +825,11 @@ def save_memories_node(state: AgentState, profile_manager: Any, semantic_manager
             
             # Save semantic memories
             try:
+                logger.debug("Attempting to save semantic memory", 
+                           messages_count=len(messages_to_save))
                 semantic_manager.submit({"messages": messages_to_save})
                 memory_save_results["semantic"] = True
-                logger.debug("Semantic memory saved successfully")
+                logger.info("Semantic memory saved successfully")
             except Exception as semantic_e:
                 logger.error("Failed to save semantic memory", 
                            error=str(semantic_e),
@@ -830,9 +837,11 @@ def save_memories_node(state: AgentState, profile_manager: Any, semantic_manager
             
             # Save episodic memories
             try:
+                logger.debug("Attempting to save episodic memory", 
+                           messages_count=len(messages_to_save))
                 episodic_manager.submit({"messages": messages_to_save})
                 memory_save_results["episodic"] = True
-                logger.debug("Episodic memory saved successfully")
+                logger.info("Episodic memory saved successfully")
             except Exception as episodic_e:
                 logger.error("Failed to save episodic memory", 
                            error=str(episodic_e),
@@ -840,9 +849,11 @@ def save_memories_node(state: AgentState, profile_manager: Any, semantic_manager
             
             # Save procedural memories
             try:
+                logger.debug("Attempting to save procedural memory", 
+                           messages_count=len(messages_to_save))
                 procedural_manager.submit({"messages": messages_to_save})
                 memory_save_results["procedural"] = True
-                logger.debug("Procedural memory saved successfully")
+                logger.info("Procedural memory saved successfully")
             except Exception as procedural_e:
                 logger.error("Failed to save procedural memory", 
                            error=str(procedural_e),
